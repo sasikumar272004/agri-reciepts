@@ -23,10 +23,8 @@ export const ReceiptDesktopTable = ({ receiptsLoading, filteredReceipts, user, o
             <TableHead className="min-w-[120px]">Book/Receipt</TableHead>
             <TableHead className="min-w-[150px]">Trader</TableHead>
             <TableHead className="min-w-[150px]">Payee</TableHead>
-            <TableHead className="min-w-[120px]">Committee</TableHead>
-            <TableHead className="min-w-[100px]">Commodity</TableHead>
-            <TableHead className="min-w-[80px]">Quantity</TableHead>
-            <TableHead className="min-w-[100px]">Value</TableHead>
+            {/* Removed Committee, Commodity, Quantity columns */}
+            <TableHead className="min-w-[100px]">Market Fees</TableHead>
             <TableHead className="min-w-[80px]">Status</TableHead>
             <TableHead className="min-w-[120px]">Actions</TableHead>
           </TableRow>
@@ -64,16 +62,8 @@ export const ReceiptDesktopTable = ({ receiptsLoading, filteredReceipts, user, o
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    <div className="font-medium truncate max-w-[120px]">
-                      {receipt.committeeName || receipt.committee?.name || 'Unknown'}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{receipt.commodity}</TableCell>
-                <TableCell>{receipt.quantity} {receipt.unit}</TableCell>
-                <TableCell>₹{Number(receipt.value).toLocaleString()}</TableCell>
+                {/* Removed Committee, Commodity, Quantity cells */}
+                <TableCell>₹{Number(receipt.fees_paid).toLocaleString()}</TableCell>
                 <TableCell>
                   <Badge className="bg-green-100 text-green-800">
                     {receipt.status}

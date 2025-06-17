@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Building2 } from "lucide-react";
@@ -10,6 +10,8 @@ import { ReceiptMobileView } from './ReceiptMobileView';
 import { ReceiptDesktopTable } from './ReceiptDesktopTable';
 import ReceiptDetailModal from './ReceiptDetailModal';
 import ReceiptEntry from './ReceiptEntry';
+
+import { parseISO, isWithinInterval } from 'date-fns';
 
 const ReceiptList = ({ user }) => {
   const { receiptsLoading, committeesLoading, filteredCommittees, userAccessibleReceipts, userCommitteeId } = useReceiptData(user);
@@ -24,8 +26,27 @@ const ReceiptList = ({ user }) => {
     showFilters,
     setShowFilters,
     commodities,
-    filteredReceipts
   } = useReceiptFilters(userAccessibleReceipts);
+
+  // New filters state
+  const [filterPayee, setFilterPayee] = useState('');
+  const [filterBuyer, setFilterBuyer] = useState('');
+  const [filterDateRange, setFilterDateRange] = useState({ start: null, end: null });
+
+  // Filter receipts based on all filters
+  const filteredReceipts = useMemo(() => {
+    return userAccessibleReceipts.filter((receipt) => {
+      const matchesSearch = receipt.trader_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            receipt.payee_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCommittee = filterCommittee === 'all' || !filterCommittee || receipt.committeeName === filterCommittee;
+      const matchesCommodity = filterCommodity === 'all' || !filterCommodity || receipt.commodity === filterCommodity;
+      const matchesPayee = !filterPayee || receipt.payee_name?.toLowerCase().includes(filterPayee.toLowerCase());
+      const matchesBuyer = !filterBuyer || receipt.trader_name?.toLowerCase().includes(filterBuyer.toLowerCase());
+      const matchesDate = !filterDateRange.start || !filterDateRange.end || isWithinInterval(new Date(receipt.date), { start: filterDateRange.start, end: filterDateRange.end });
+
+      return matchesSearch && matchesCommittee && matchesCommodity && matchesPayee && matchesBuyer && matchesDate;
+    });
+  }, [userAccessibleReceipts, searchTerm, filterCommittee, filterCommodity, filterPayee, filterBuyer, filterDateRange]);
 
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,10 +60,19 @@ const ReceiptList = ({ user }) => {
     setIsModalOpen(true);
   };
 
+  const receiptEntryRef = React.useRef(null);
+
   const handleEdit = (receipt) => {
     setSelectedReceipt(receipt);
     setIsEditMode(true);
     setIsModalOpen(true);
+
+    // Scroll to ReceiptEntry component after a short delay to ensure it is rendered
+    setTimeout(() => {
+      if (receiptEntryRef.current) {
+        receiptEntryRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleCloseModal = () => {
@@ -89,12 +119,19 @@ const ReceiptList = ({ user }) => {
           )}
 
           <ReceiptFilters
+            userRole={user.role}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             filterCommittee={filterCommittee}
             setFilterCommittee={setFilterCommittee}
             filterCommodity={filterCommodity}
             setFilterCommodity={setFilterCommodity}
+            filterPayee={filterPayee}
+            setFilterPayee={setFilterPayee}
+            filterBuyer={filterBuyer}
+            setFilterBuyer={setFilterBuyer}
+            filterDateRange={filterDateRange}
+            setFilterDateRange={setFilterDateRange}
             showFilters={showFilters}
             setShowFilters={setShowFilters}
             filteredCommittees={filteredCommittees}
@@ -125,7 +162,7 @@ const ReceiptList = ({ user }) => {
               Showing {filteredReceipts.length} of {userAccessibleReceipts.length} receipts
             </span>
             <span className="font-medium">
-              Total Value: ₹{filteredReceipts.reduce((sum, receipt: any) => sum + Number(receipt.value), 0).toLocaleString()}
+              Total Market Fees: ₹{filteredReceipts.reduce((sum, receipt: any) => sum + Number(receipt.fees_paid), 0).toLocaleString()}
             </span>
           </div>
         </CardContent>
@@ -138,11 +175,13 @@ const ReceiptList = ({ user }) => {
       />
 
       {isEditMode && selectedReceipt && (
-        <ReceiptEntry
-          user={user}
-          receiptToEdit={selectedReceipt}
-          onClose={handleCloseModal}
-        />
+        <div ref={receiptEntryRef}>
+          <ReceiptEntry
+            user={user}
+            receiptToEdit={selectedReceipt}
+            onClose={handleCloseModal}
+          />
+        </div>
       )}
     </div>
   );

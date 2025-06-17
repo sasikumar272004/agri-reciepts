@@ -13,7 +13,7 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt }: ReceiptDetailModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Receipt Details</DialogTitle>
           <DialogDescription>

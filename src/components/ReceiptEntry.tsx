@@ -346,10 +346,10 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <Save className="mr-2 h-5 w-5" />
-          New Receipt Entry - {userCommitteeData ? userCommitteeData.name : (userCommittee || 'No Committee Assigned')}
+          {receiptToEdit ? 'Edit Receipt Entry' : 'New Receipt Entry'} - {userCommitteeData ? userCommitteeData.name : (userCommittee || 'No Committee Assigned')}
         </CardTitle>
         <CardDescription>
-          Enter details for a new trade receipt for {userCommitteeData ? userCommitteeData.name : 'your assigned committee'}
+          {receiptToEdit ? 'Edit details for the trade receipt' : 'Enter details for a new trade receipt'} for {userCommitteeData ? userCommitteeData.name : 'your assigned committee'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -387,22 +387,25 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
             <div className="space-y-2">
               <Label>Receipt Date</Label>
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                  disabled={!!receiptToEdit} // disable date picker if editing
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                {!receiptToEdit && (
                   <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                </PopoverContent>
-              </Popover>
+                )}
+              </PopoverContent>
+            </Popover>
             </div>
 
             <div className="space-y-2">
