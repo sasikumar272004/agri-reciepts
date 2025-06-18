@@ -24,8 +24,8 @@ export const ReceiptDesktopTable = ({ receiptsLoading, filteredReceipts, user, o
             <TableHead className="min-w-[150px]">Trader</TableHead>
             <TableHead className="min-w-[150px]">Payee</TableHead>
             {/* Removed Committee, Commodity, Quantity columns */}
-            <TableHead className="min-w-[100px]">Market Fees</TableHead>
-            <TableHead className="min-w-[80px]">Status</TableHead>
+            <TableHead className="min-w-[100px]">Amount Paid</TableHead>
+            {/* Removed Status column as per request */}
             <TableHead className="min-w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -64,11 +64,7 @@ export const ReceiptDesktopTable = ({ receiptsLoading, filteredReceipts, user, o
                 </TableCell>
                 {/* Removed Committee, Commodity, Quantity cells */}
                 <TableCell>₹{Number(receipt.fees_paid).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge className="bg-green-100 text-green-800">
-                    {receipt.status}
-                  </Badge>
-                </TableCell>
+                {/* Removed Status cell as per request */}
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" onClick={() => onView(receipt)}>

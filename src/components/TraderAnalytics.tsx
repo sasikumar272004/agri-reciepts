@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,9 +56,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
   const [selectedTrader, setSelectedTrader] = useState<string | null>(null);
   const { toast } = useToast();
 
-  console.log(`TraderAnalytics - User: ${user.username}, Role: ${user.role}, Committee: ${user.committee}`);
-  console.log(`TraderAnalytics - Accessible receipts count: ${userAccessibleReceipts.length}`);
-
   if (receiptsLoading) {
     return (
       <div className="space-y-6">
@@ -68,10 +64,8 @@ const TraderAnalytics = ({ user }: { user: any }) => {
     );
   }
 
-  // Use real receipts data
   const receiptsData = userAccessibleReceipts;
 
-  // Process trader data with proper typing
   const traderData: Record<string, TraderData> = receiptsData.reduce((acc, receipt) => {
     const traderName = receipt.trader_name || 'Unknown Trader';
     if (!acc[traderName]) {
@@ -90,7 +84,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
     acc[traderName].totalValue += Number(receipt.value) || 0;
     acc[traderName].totalQuantity += Number(receipt.quantity) || 0;
     
-    // Handle commodities as a Set temporarily, then convert to array
     const commoditiesSet = new Set(acc[traderName].commodities);
     commoditiesSet.add(receipt.commodity);
     acc[traderName].commodities = Array.from(commoditiesSet);
@@ -102,7 +95,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
     return acc;
   }, {} as Record<string, TraderData>);
 
-  // Calculate averages
   Object.keys(traderData).forEach(traderName => {
     const trader = traderData[traderName];
     trader.avgValue = trader.receipts.length > 0 ? trader.totalValue / trader.receipts.length : 0;
@@ -118,7 +110,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
 
   const selectedTraderData = selectedTrader ? traderData[selectedTrader] : null;
 
-  // Monthly data for selected trader
   const getTraderMonthlyData = (trader: TraderData) => {
     if (!trader) return [];
     
@@ -135,9 +126,8 @@ const TraderAnalytics = ({ user }: { user: any }) => {
     return Object.values(monthlyData);
   };
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
+  const COLORS = ['#4caf50', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
 
-  // Show empty state if no traders found
   if (Object.keys(traderData).length === 0) {
     return (
       <div className="space-y-6">
@@ -168,7 +158,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
         <p className="text-gray-600">Comprehensive analysis of trader performance and trading patterns</p>
       </div>
 
-      {/* Search and Filter */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -192,7 +181,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Traders by Value */}
         <Card>
           <CardHeader>
             <CardTitle>Top Traders by Value</CardTitle>
@@ -205,13 +193,12 @@ const TraderAnalytics = ({ user }: { user: any }) => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Total Value']} />
-                <Bar dataKey="totalValue" fill="#8884d8" />
+                <Bar dataKey="totalValue" fill="#4caf50" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Trader List */}
         <Card>
           <CardHeader>
             <CardTitle>Trader Directory</CardTitle>
@@ -224,7 +211,7 @@ const TraderAnalytics = ({ user }: { user: any }) => {
                   key={index} 
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     selectedTrader === trader.name 
-                      ? 'bg-blue-50 border-blue-200' 
+                      ? 'bg-green-50 border-green-200' 
                       : 'hover:bg-gray-50'
                   }`}
                   onClick={() => setSelectedTrader(trader.name)}
@@ -248,7 +235,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
         </Card>
       </div>
 
-      {/* Selected Trader Details */}
       {selectedTraderData && (
         <div className="space-y-6">
           <Card>
@@ -263,9 +249,9 @@ const TraderAnalytics = ({ user }: { user: any }) => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{selectedTraderData.receipts.length}</div>
-                  <div className="text-sm text-blue-600">Total Receipts</div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{selectedTraderData.receipts.length}</div>
+                  <div className="text-sm text-green-600">Total Receipts</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">₹{(selectedTraderData.totalValue / 100000).toFixed(1)}L</div>
@@ -282,7 +268,6 @@ const TraderAnalytics = ({ user }: { user: any }) => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Monthly Trend */}
                 <div>
                   <h4 className="font-medium mb-4">Monthly Trading Pattern</h4>
                   <ResponsiveContainer width="100%" height={250}>
@@ -291,13 +276,12 @@ const TraderAnalytics = ({ user }: { user: any }) => {
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Line type="monotone" dataKey="value" stroke="#8884d8" name="Value" />
+                      <Line type="monotone" dataKey="value" stroke="#4caf50" name="Value" />
                       <Line type="monotone" dataKey="count" stroke="#82ca9d" name="Count" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Commodities */}
                 <div>
                   <h4 className="font-medium mb-4">Commodities Traded</h4>
                   <div className="space-y-2">

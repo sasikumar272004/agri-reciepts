@@ -31,7 +31,7 @@ const ReceiptList = ({ user }) => {
   // New filters state
   const [filterPayee, setFilterPayee] = useState('');
   const [filterBuyer, setFilterBuyer] = useState('');
-  const [filterDateRange, setFilterDateRange] = useState({ start: null, end: null });
+  const [filterNatureOfReceipt, setFilterNatureOfReceipt] = useState('all');
 
   // Filter receipts based on all filters
   const filteredReceipts = useMemo(() => {
@@ -42,11 +42,11 @@ const ReceiptList = ({ user }) => {
       const matchesCommodity = filterCommodity === 'all' || !filterCommodity || receipt.commodity === filterCommodity;
       const matchesPayee = !filterPayee || receipt.payee_name?.toLowerCase().includes(filterPayee.toLowerCase());
       const matchesBuyer = !filterBuyer || receipt.trader_name?.toLowerCase().includes(filterBuyer.toLowerCase());
-      const matchesDate = !filterDateRange.start || !filterDateRange.end || isWithinInterval(new Date(receipt.date), { start: filterDateRange.start, end: filterDateRange.end });
+      const matchesNature = filterNatureOfReceipt === 'all' || !filterNatureOfReceipt || receipt.nature_of_receipt?.toLowerCase() === filterNatureOfReceipt.toLowerCase();
 
-      return matchesSearch && matchesCommittee && matchesCommodity && matchesPayee && matchesBuyer && matchesDate;
+      return matchesSearch && matchesCommittee && matchesCommodity && matchesPayee && matchesBuyer && matchesNature;
     });
-  }, [userAccessibleReceipts, searchTerm, filterCommittee, filterCommodity, filterPayee, filterBuyer, filterDateRange]);
+  }, [userAccessibleReceipts, searchTerm, filterCommittee, filterCommodity, filterPayee, filterBuyer, filterNatureOfReceipt]);
 
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,6 +80,10 @@ const ReceiptList = ({ user }) => {
     setIsModalOpen(false);
     setIsEditMode(false);
   };
+
+  // Extract unique payee and buyer names for autocomplete suggestions
+  const uniquePayees = Array.from(new Set(userAccessibleReceipts.map(r => r.payee_name).filter(Boolean)));
+  const uniqueBuyers = Array.from(new Set(userAccessibleReceipts.map(r => r.trader_name).filter(Boolean)));
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -130,8 +134,8 @@ const ReceiptList = ({ user }) => {
             setFilterPayee={setFilterPayee}
             filterBuyer={filterBuyer}
             setFilterBuyer={setFilterBuyer}
-            filterDateRange={filterDateRange}
-            setFilterDateRange={setFilterDateRange}
+            filterNatureOfReceipt={filterNatureOfReceipt}
+            setFilterNatureOfReceipt={setFilterNatureOfReceipt}
             showFilters={showFilters}
             setShowFilters={setShowFilters}
             filteredCommittees={filteredCommittees}
@@ -162,7 +166,7 @@ const ReceiptList = ({ user }) => {
               Showing {filteredReceipts.length} of {userAccessibleReceipts.length} receipts
             </span>
             <span className="font-medium">
-              Total Market Fees: ₹{filteredReceipts.reduce((sum, receipt: any) => sum + Number(receipt.fees_paid), 0).toLocaleString()}
+              Total Amount Paid: ₹{filteredReceipts.reduce((sum, receipt: any) => sum + Number(receipt.amount_paid ?? receipt.fees_paid), 0).toLocaleString()}
             </span>
           </div>
         </CardContent>

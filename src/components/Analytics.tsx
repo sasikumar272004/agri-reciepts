@@ -1,17 +1,43 @@
-
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
 import { useReceiptData } from '@/hooks/useReceiptData';
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const subLocs = data.subLocations || {};
+    const COLORS = ['#4caf50', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
+
+    return (
+      <div style={{ backgroundColor: 'white', border: '1px solid #ccc', padding: 10, borderRadius: 4, minWidth: 200 }}>
+        <p style={{ margin: 0, fontWeight: 'bold' }}>{label}</p>
+        <p style={{ margin: '4px 0' }}>Total: ₹{data.value.toFixed(0)}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {Object.entries(subLocs).map(([subLoc, val], index) => (
+            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 12, height: 12, backgroundColor: COLORS[index % COLORS.length], borderRadius: '50%' }}></div>
+              <span>{subLoc}: ₹{(val as number).toFixed(0)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const Analytics = ({ user }: { user: any }) => {
   const { userAccessibleReceipts, receiptsLoading, userCommitteeId } = useReceiptData(user);
   const { toast } = useToast();
 
-  console.log(`Analytics - User: ${user.username}, Role: ${user.role}, Committee: ${user.committee}`);
-  console.log(`Analytics - User Committee ID: ${userCommitteeId}`);
-  console.log(`Analytics - Accessible receipts count: ${userAccessibleReceipts.length}`);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   if (receiptsLoading) {
     return (
@@ -21,12 +47,17 @@ const Analytics = ({ user }: { user: any }) => {
     );
   }
 
-  // Use userAccessibleReceipts which is already filtered by user's committee access
-  const receiptsData = userAccessibleReceipts;
+  let receiptsData = userAccessibleReceipts;
 
-  console.log(`Analytics - Processing ${receiptsData.length} receipts for analysis`);
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    receiptsData = receiptsData.filter((receipt: any) => {
+      const receiptDate = new Date(receipt.date);
+      return receiptDate >= start && receiptDate <= end;
+    });
+  }
 
-  // Process data for charts using the filtered receipts
   const districtData = receiptsData.reduce((acc: any, receipt) => {
     const district = receipt.committeeName || 'Unknown';
     if (!acc[district]) {
@@ -49,9 +80,8 @@ const Analytics = ({ user }: { user: any }) => {
     return acc;
   }, {});
 
-  const commodityChartData = Object.values(commodityData).slice(0, 10); // Top 10 commodities
+  const commodityChartData = Object.values(commodityData).slice(0, 10);
 
-  // Monthly trend data
   const monthlyData = receiptsData.reduce((acc: any, receipt) => {
     const month = new Date(receipt.date).toLocaleString('default', { month: 'short', year: 'numeric' });
     if (!acc[month]) {
@@ -69,9 +99,21 @@ const Analytics = ({ user }: { user: any }) => {
   const totalQuantity = receiptsData.reduce((sum, receipt) => sum + (Number(receipt.quantity) || 0), 0);
   const avgValue = totalReceipts > 0 ? totalValue / totalReceipts : 0;
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
+  const COLORS = ['#4caf50', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
 
-  // Determine analytics scope based on user role
+  const marketFeesReceipts = user.role === 'Supervisor' ? receiptsData.filter((receipt: any) => receipt.nature_of_receipt === "mf") : [];
+
+  const locationData = marketFeesReceipts.reduce((acc: any, receipt: any) => {
+    const location = receipt.collection_location || 'Unknown';
+    if (!acc[location]) {
+      acc[location] = { location, count: 0, value: 0 };
+    }
+    acc[location].count += 1;
+    acc[location].value += Number(receipt.fees_paid) || 0;
+    return acc;
+  }, {});
+  const locationChartData = Object.values(locationData);
+
   const getAnalyticsTitle = () => {
     switch (user.role) {
       case 'JD':
@@ -94,7 +136,6 @@ const Analytics = ({ user }: { user: any }) => {
     }
   };
 
-  // Show a message if no data is available
   if (totalReceipts === 0) {
     return (
       <div className="space-y-6">
@@ -119,39 +160,20 @@ const Analytics = ({ user }: { user: any }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">{getAnalyticsTitle()}</h2>
-        <p className="text-gray-600">{getAnalyticsDescription()}</p>
-      </div>
-
-      {/* Debug Info for Supervisor */}
-      {user.role === 'Supervisor' && (
-        <Card className="border-blue-200 bg-blue-50">
+    <>
+      {user.role === 'Supervisor' ? (
+        <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <div className="text-sm text-blue-800">
+            <div className="text-sm text-green-800">
               <p><strong>Committee:</strong> {user.committee}</p>
               <p><strong>Committee ID:</strong> {userCommitteeId ? userCommitteeId.slice(0, 8) + '...' : 'Not Found'}</p>
               <p><strong>Receipts Found:</strong> {totalReceipts}</p>
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Receipts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalReceipts.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {user.role === 'JD' ? 'District total' : user.role === 'Supervisor' ? 'Committee total' : 'All time count'}
-            </p>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Value</CardTitle>
@@ -183,32 +205,31 @@ const Analytics = ({ user }: { user: any }) => {
         </Card>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Committee/District-wise Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {user.role === 'JD' ? 'Committee-wise Receipt Distribution' : 'Committee Receipt Distribution'}
-            </CardTitle>
-            <CardDescription>
-              {user.role === 'JD' ? 'Number of receipts by committee' : `Receipt distribution for ${user.committee}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={districtChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="district" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {user.role !== 'Supervisor' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {user.role === 'JD' ? 'Committee-wise Receipt Distribution' : 'Committee Receipt Distribution'}
+              </CardTitle>
+              <CardDescription>
+                {user.role === 'JD' ? 'Number of receipts by committee' : `Receipt distribution for ${user.committee}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={districtChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="district" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#4caf50" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Top Commodities */}
         <Card>
           <CardHeader>
             <CardTitle>Top Commodities</CardTitle>
@@ -222,9 +243,9 @@ const Analytics = ({ user }: { user: any }) => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ commodity, percent }) => `${commodity} ${(Number(percent) * 100).toFixed(0)}%`}
+                  label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
-                  fill="#8884d8"
+                  fill="#4caf50"
                   dataKey="count"
                 >
                   {commodityChartData.map((entry, index) => (
@@ -237,76 +258,64 @@ const Analytics = ({ user }: { user: any }) => {
           </CardContent>
         </Card>
 
-        {/* Monthly Trend */}
-        <Card className="lg:col-span-2">
+        <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Monthly Trading Trend</CardTitle>
-            <CardDescription>Receipt count and value trends over time</CardDescription>
+            <CardTitle>Market Fees Analysis by Location</CardTitle>
+            <CardDescription>Analysis of market fees receipts collected by location</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Bar yAxisId="left" dataKey="count" fill="#8884d8" name="Receipt Count" />
-                <Line yAxisId="right" type="monotone" dataKey="value" stroke="#82ca9d" name="Total Value" />
-              </LineChart>
+              <PieChart>
+                <Pie
+                  data={(() => {
+                    const mainLocations: any = {};
+                    marketFeesReceipts.forEach((receipt: any) => {
+                      const mainLoc = receipt.collection_location === 'checkpost' ? 'Checkpost' : 'Office';
+                      if (!mainLocations[mainLoc]) {
+                        mainLocations[mainLoc] = { name: mainLoc, value: 0, subLocations: {} };
+                      }
+                      mainLocations[mainLoc].value += Number(receipt.fees_paid) || 0;
+
+                      const subLoc = receipt.checkpost_location || 'Unknown';
+                      if (!mainLocations[mainLoc].subLocations[subLoc]) {
+                        mainLocations[mainLoc].subLocations[subLoc] = 0;
+                      }
+                      mainLocations[mainLoc].subLocations[subLoc] += Number(receipt.fees_paid) || 0;
+                    });
+                    return Object.values(mainLocations);
+                  })()}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#82ca9d"
+                  dataKey="value"
+                >
+                  {(() => {
+                    const data = (() => {
+                      const mainLocations: any = {};
+                      marketFeesReceipts.forEach((receipt: any) => {
+                        const mainLoc = receipt.collection_location === 'checkpost' ? 'Checkpost' : 'Office';
+                        if (!mainLocations[mainLoc]) {
+                          mainLocations[mainLoc] = { name: mainLoc, value: 0, subLocations: {} };
+                        }
+                        mainLocations[mainLoc].value += Number(receipt.fees_paid) || 0;
+                      });
+                      return Object.values(mainLocations);
+                    })();
+                    return data.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ));
+                  })()}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
-
-      {/* Detailed Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {user.role === 'JD' ? 'Committee Performance' : 'Committee Performance'}
-            </CardTitle>
-            <CardDescription>
-              {user.role === 'JD' ? 'Detailed committee-wise breakdown' : `Performance summary for ${user.committee}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {districtChartData.map((district: any, index) => (
-                <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <span className="font-medium">{district.district}</span>
-                  <div className="text-right">
-                    <div className="font-bold">{district.count} receipts</div>
-                    <div className="text-sm text-gray-600">₹{(Number(district.value) / 100000).toFixed(1)}L</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Commodity Analysis</CardTitle>
-            <CardDescription>Top commodities by trade value</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {commodityChartData.slice(0, 8).map((commodity: any, index) => (
-                <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <span className="font-medium">{commodity.commodity}</span>
-                  <div className="text-right">
-                    <div className="font-bold">{commodity.count} receipts</div>
-                    <div className="text-sm text-gray-600">₹{(Number(commodity.value) / 100000).toFixed(1)}L</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </>
   );
 };
 

@@ -115,53 +115,37 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
         if (error) throw error;
         setCommittees(committeesData || []);
 
-        console.log('All committees loaded:', committeesData);
-        console.log('User committee from props:', user.committee);
-
         // Set user's committee if they have one
         if (user.committee) {
           setUserCommittee(user.committee);
           
-          // Enhanced matching logic for committee lookup
           const userCommitteeLower = user.committee.toLowerCase().trim();
           
           const matchingCommittee = committeesData?.find(c => {
             const dbNameLower = c.name.toLowerCase();
             const dbCodeLower = c.code.toLowerCase();
             
-            console.log(`Checking committee: "${c.name}" (code: "${c.code}") against user committee: "${user.committee}"`);
-            
-            // First try exact matches
             if (dbNameLower === userCommitteeLower || dbCodeLower === userCommitteeLower) {
-              console.log('Found exact match:', c.name);
               return true;
             }
             
-            // Special handling for specific known mappings
             if (userCommitteeLower === 'tuni amc' && dbNameLower.includes('tuni agricultural market committee')) {
-              console.log('Found specific Tuni AMC match:', c.name);
               return true;
             }
             
             if (userCommitteeLower === 'kakinada amc' && dbNameLower.includes('kakinada agricultural market committee')) {
-              console.log('Found specific Kakinada AMC match:', c.name);
               return true;
             }
             
-            // Generic partial matching (more conservative)
             if (userCommitteeLower.includes('tuni') && dbNameLower.includes('tuni')) {
-              console.log('Found Tuni partial match:', c.name);
               return true;
             }
             
             if (userCommitteeLower.includes('kakinada') && dbNameLower.includes('kakinada')) {
-              console.log('Found Kakinada partial match:', c.name);
               return true;
             }
             
-            // Code matching
             if (dbCodeLower === userCommitteeLower) {
-              console.log('Found code match:', c.name);
               return true;
             }
             
@@ -170,14 +154,9 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
           
           if (matchingCommittee) {
             setUserCommitteeData(matchingCommittee);
-            console.log('Successfully matched committee:', matchingCommittee);
-          } else {
-            console.log('No matching committee found for:', user.committee);
-            console.log('Available committees:', committeesData?.map(c => `${c.name} (${c.code})`));
           }
         }
       } catch (error) {
-        console.error('Error loading committees:', error);
         toast({
           title: "Error loading committees",
           description: "Failed to load committee data. Please refresh the page.",
@@ -205,7 +184,6 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
-      // Clear dependent fields when collection_location changes
       if (field === 'collection_location') {
         newData.collected_by = '';
         newData.checkpost_location = '';
@@ -231,7 +209,6 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
         return;
     }
 
-    // Validate conditional fields
     if (formData.collection_location === 'office' && !formData.collected_by) {
         toast({ title: "Please select who collected the receipt", variant: "destructive" });
         return;
@@ -245,6 +222,29 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
     setLoading(true);
 
     try {
+      // Check for duplicate book_number and receipt_number if inserting new receipt
+      if (!receiptToEdit) {
+        const { data: existingReceipts, error: fetchError } = await supabase
+          .from('receipts')
+          .select('id')
+          .eq('book_number', formData.book_number)
+          .eq('receipt_number', formData.receipt_number)
+          .eq('status', 'Active')
+          .limit(1);
+
+        if (fetchError) throw fetchError;
+
+        if (existingReceipts && existingReceipts.length > 0) {
+          toast({
+            title: "Duplicate Receipt",
+            description: `A receipt with book number ${formData.book_number} and receipt number ${formData.receipt_number} already exists.`,
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       // Create receipt object for Supabase
       const receiptData = {
         book_number: formData.book_number,
