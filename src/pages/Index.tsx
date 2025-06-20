@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Building2, Search, FileText, Users, Shield } from "lucide-react";
 import Dashboard from "@/components/Dashboard";
 import { useToast } from "@/hooks/use-toast";
 import LoginForm from "@/components/LoginForm";
 
+const LOCAL_STORAGE_USER_KEY = 'currentUser';
+
 const Index = () => {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  // Restore user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const handleLogin = async (username: string, password: string) => {
     setLoading(true);
@@ -48,6 +58,7 @@ const Index = () => {
     if (user) {
       console.log('Demo user found:', user);
       setCurrentUser(user);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(user));
       toast({
         title: "Login Successful",
         description: `Welcome back, ${user.name}!`,
@@ -66,6 +77,7 @@ const Index = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",

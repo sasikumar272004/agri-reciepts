@@ -22,8 +22,8 @@ const units = ['Quintals', 'Number', 'Bags'];
 
 // Nature of receipt options
 const natureOfReceipt = [
-    { value: 'lf', label: 'Licence Fees (LF)' },
     { value: 'mf', label: 'Market Fees (MF)' },
+    { value: 'lf', label: 'Licence Fees (LF)' },
     { value: 'uc', label: 'User Charges (UC)' },
     { value: 'others', label: 'Others' }
 ];
@@ -34,14 +34,26 @@ const collectionLocations = ['checkpost', 'office'];
 // Supervisors
 const supervisors = ['supervisor_1', 'supervisor_2'];
 
-// Tuni locations for checkpost
-const tuniLocations = [
-    'Tuni Main Checkpost',
-    'Tuni Railway Station',
-    'Tuni Bus Stand',
-    'Tuni Market Yard',
-    'Tuni Industrial Area'
-];
+// Committee-specific checkpost locations based on the provided image
+const committeeCheckposts = {
+    'Karapa Agricultural Market Committee': ['Penuguduru'],
+    'Kakinada Rural Agricultural Market Committee': ['Atchempeta', 'Turangi Bypass'],
+    'Kakinada Agricultural Market Committee': [], // No checkpost as mentioned
+    'Pithapuram Agricultural Market Committee': ['Pithapuram', 'Chebrolu'],
+    'Tuni Agricultural Market Committee': ['Tuni', 'K/P Puram', 'Rekavanipalem'],
+    'Prathipadu Agricultural Market Committee': ['Kathipudi', 'Prathipadu', 'Yerravaram'],
+    'Jaggampeta Agricultural Market Committee': ['Jaggampeta', 'Rajupalem'],
+    'Peddapuram Agricultural Market Committee': ['Peddapuram', 'Peddapuram Bypass'],
+    // Add other committees as needed
+    'Rajahmundry Agricultural Market Committee': ['Rajahmundry Main', 'Rajahmundry Bypass'],
+    'Amalapuram Agricultural Market Committee': ['Amalapuram', 'Amalapuram Junction'],
+
+    'Ramachandrapuram Agricultural Market Committee': ['Ramachandrapuram', 'RCP Junction'],
+    'Mandapeta Agricultural Market Committee': ['Mandapeta', 'Mandapeta Bypass'],
+    'Korumilli Agricultural Market Committee': ['Korumilli', 'Korumilli Junction'],
+    'Sankhavaram Agricultural Market Committee': ['Sankhavaram', 'Sankhavaram Bypass'],
+    'Yelamanchili Agricultural Market Committee': ['Yelamanchili', 'Yelamanchili Junction']
+};
 
 const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -50,6 +62,7 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
   const [committees, setCommittees] = useState([]);
   const [userCommittee, setUserCommittee] = useState(null);
   const [userCommitteeData, setUserCommitteeData] = useState(null);
+  const [availableCheckposts, setAvailableCheckposts] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -154,6 +167,9 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
           
           if (matchingCommittee) {
             setUserCommitteeData(matchingCommittee);
+            // Set available checkposts based on the user's committee
+            const checkposts = committeeCheckposts[matchingCommittee.name] || [];
+            setAvailableCheckposts(checkposts);
           }
         }
       } catch (error) {
@@ -214,9 +230,19 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
         return;
     }
 
-    if (formData.collection_location === 'checkpost' && !formData.checkpost_location) {
-        toast({ title: "Please select checkpost location", variant: "destructive" });
-        return;
+    if (formData.collection_location === 'checkpost') {
+        if (availableCheckposts.length === 0) {
+            toast({ 
+              title: "No checkpost available", 
+              description: `${userCommitteeData.name} does not have any checkpost locations.`, 
+              variant: "destructive" 
+            });
+            return;
+        }
+        if (!formData.checkpost_location) {
+            toast({ title: "Please select checkpost location", variant: "destructive" });
+            return;
+        }
     }
 
     setLoading(true);
@@ -375,9 +401,11 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  All receipts will be recorded under this committee for statistical tracking
-                </p>
+                {userCommitteeData && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Available Checkposts: {availableCheckposts.length > 0 ? availableCheckposts.join(', ') : 'No checkposts (Office collection only)'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -547,13 +575,15 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
                   <SelectValue placeholder="Select location" />
                 </SelectTrigger>
                 <SelectContent>
-                  {collectionLocations.map((location) => (
-                    <SelectItem key={location} value={location}>
-                      {location.charAt(0).toUpperCase() + location.slice(1)}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="office">Office</SelectItem>
+                  {availableCheckposts.length > 0 && (
+                    <SelectItem value="checkpost">Checkpost</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {availableCheckposts.length === 0 && formData.collection_location === 'checkpost' && (
+                <p className="text-xs text-red-600">No checkposts available for {userCommitteeData?.name}</p>
+              )}
             </div>
 
             {formData.collection_location === 'office' && (
@@ -574,7 +604,7 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
               </div>
             )}
 
-            {formData.collection_location === 'checkpost' && (
+            {formData.collection_location === 'checkpost' && availableCheckposts.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="checkpostLocation">Checkpost Location</Label>
                 <Select value={formData.checkpost_location} onValueChange={(value) => handleInputChange('checkpost_location', value)}>
@@ -582,7 +612,7 @@ const ReceiptEntry = ({ user, receiptToEdit, onClose }) => {
                     <SelectValue placeholder="Select checkpost" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tuniLocations.map((location) => (
+                    {availableCheckposts.map((location) => (
                       <SelectItem key={location} value={location}>
                         {location}
                       </SelectItem>

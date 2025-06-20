@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,9 @@ import ReceiptList from "./ReceiptList";
 import Analytics from "./Analytics";
 import TraderAnalytics from "./TraderAnalytics";
 import UserManagement from "./UserManagement";
+import Reports from "./Reports";
 import { useReceiptData } from '@/hooks/useReceiptData';
+import { supabase } from '@/integrations/supabase/client';
 
 const INACTIVITY_TIMEOUT = 30000; // 30 seconds
 
@@ -29,6 +31,34 @@ const Dashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { userAccessibleReceipts } = useReceiptData(user);
+
+  const [committees, setCommittees] = useState([]);
+  const [loadingCommittees, setLoadingCommittees] = useState(true);
+  const [committeesError, setCommitteesError] = useState(null);
+
+  useEffect(() => {
+    const fetchCommittees = async () => {
+      setLoadingCommittees(true);
+      setCommitteesError(null);
+      try {
+        const { data, error } = await supabase
+          .from('committees')
+          .select('name')
+          .eq('district', 'East Godavari')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setCommittees(data || []);
+      } catch (error) {
+        setCommitteesError(error.message);
+      } finally {
+        setLoadingCommittees(false);
+      }
+    };
+
+    if (user.role === 'JD') {
+      fetchCommittees();
+    }
+  }, [user.role]);
 
   if (!user) {
     return (
@@ -96,7 +126,8 @@ const Dashboard = ({ user, onLogout }) => {
         return [
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'entry', label: 'New Receipt', icon: Plus },
-          { id: 'list', label: 'My Receipts', icon: FileText }
+          { id: 'list', label: 'My Receipts', icon: FileText },
+          { id: 'reports', label: 'Reports', icon: FileText }
         ];
       case 'Supervisor':
         return [
@@ -104,14 +135,16 @@ const Dashboard = ({ user, onLogout }) => {
           { id: 'entry', label: 'New Receipt', icon: Plus },
           { id: 'analytics', label: 'Committee Analytics', icon: TrendingUp },
           { id: 'trader-analytics', label: 'Trader Analysis', icon: Users },
-          { id: 'list', label: 'Committee Receipts', icon: FileText }
+          { id: 'list', label: 'Committee Receipts', icon: FileText },
+          { id: 'reports', label: 'Reports', icon: FileText }
         ];
       case 'JD':
         return [
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'analytics', label: 'District Analytics', icon: TrendingUp },
           { id: 'list', label: 'All Receipts', icon: FileText },
-          { id: 'user-management', label: 'User Management', icon: Shield }
+          { id: 'user-management', label: 'User Management', icon: Shield },
+          { id: 'reports', label: 'Reports', icon: FileText }
         ];
       default:
         return [
@@ -210,7 +243,7 @@ const Dashboard = ({ user, onLogout }) => {
           return (
             <div className="space-y-6">
               <StatisticsCards />
-              <ReceiptEntry user={user} />
+              <ReceiptEntry user={user} receiptToEdit={null} onClose={() => {}} />
             </div>
           );
         }
@@ -248,6 +281,15 @@ const Dashboard = ({ user, onLogout }) => {
             <div className="space-y-6">
               <StatisticsCards />
               <UserManagement user={user} />
+            </div>
+          );
+        }
+        break;
+      case 'reports':
+        if (user.role === 'DEO' || user.role === 'Supervisor' || user.role === 'JD') {
+          return (
+            <div className="space-y-6">
+              <Reports />
             </div>
           );
         }
@@ -375,16 +417,16 @@ const Dashboard = ({ user, onLogout }) => {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-2">AMCs in East Godavari District</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                        <div>• Tuni AMC</div>
-                        <div>• Kakinada AMC</div>
-                        <div>• Rajahmundry AMC</div>
-                        <div>• Amalapuram AMC</div>
-                        <div>• Peddapuram AMC</div>
-                        <div>• Ramachandrapuram AMC</div>
-                        <div>• Mandapeta AMC</div>
-                        <div>• Korumilli AMC</div>
-                        <div>• Sankhavaram AMC</div>
-                        <div>• Yelamanchili AMC</div>
+                        {loadingCommittees && <div>Loading committees...</div>}
+                        {committeesError && <div className="text-red-600">Error: {committeesError}</div>}
+                        {!loadingCommittees && !committeesError && committees.length === 0 && (
+                          <div>No committees found.</div>
+                        )}
+                        {!loadingCommittees && !committeesError && committees.map((committee) => {
+                          // Replace "Agricultural Market Committee" with "AMC" in the name
+                          const displayName = committee.name.replace(/Agricultural Market Committee/gi, 'AMC');
+                          return <div key={committee.name}>• {displayName}</div>;
+                        })}
                       </div>
                     </div>
                   )}
@@ -399,19 +441,17 @@ const Dashboard = ({ user, onLogout }) => {
   // Auto-collapsing JD Sidebar Component
   const AutoCollapsibleJDSidebar = () => {
     const { setOpen } = useSidebar();
-    const [inactivityTimer, setInactivityTimer] = useState(null);
+    const inactivityTimerRef = useRef(null);
 
     const resetInactivityTimer = useCallback(() => {
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
       }
-      
-      const timer = setTimeout(() => {
+
+      inactivityTimerRef.current = setTimeout(() => {
         setOpen(false);
       }, INACTIVITY_TIMEOUT);
-      
-      setInactivityTimer(timer);
-    }, [inactivityTimer, setOpen]);
+    }, [setOpen]);
 
     useEffect(() => {
       // Start the inactivity timer when component mounts
@@ -419,21 +459,21 @@ const Dashboard = ({ user, onLogout }) => {
 
       // Add event listeners for user activity
       const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-      
+
       events.forEach(event => {
         document.addEventListener(event, resetInactivityTimer, true);
       });
 
       // Cleanup on unmount
       return () => {
-        if (inactivityTimer) {
-          clearTimeout(inactivityTimer);
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
         }
         events.forEach(event => {
           document.removeEventListener(event, resetInactivityTimer, true);
         });
       };
-    }, [resetInactivityTimer, inactivityTimer]);
+    }, [resetInactivityTimer]);
 
     return (
       <Sidebar>

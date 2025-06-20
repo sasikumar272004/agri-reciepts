@@ -18,7 +18,6 @@ interface Receipt {
   value: number;
   committee_id: string;
   committeeName?: string;
-  // Add other fields as needed
   book_number?: string;
   receipt_number?: string;
   payee_name?: string;
@@ -66,7 +65,7 @@ const TraderAnalytics = ({ user }: { user: any }) => {
 
   const receiptsData = userAccessibleReceipts;
 
-  const traderData: Record<string, TraderData> = receiptsData.reduce((acc, receipt) => {
+  const traderData: Record<string, TraderData> = receiptsData.reduce((acc, receipt: Receipt) => {
     const traderName = receipt.trader_name || 'Unknown Trader';
     if (!acc[traderName]) {
       acc[traderName] = {
@@ -81,7 +80,10 @@ const TraderAnalytics = ({ user }: { user: any }) => {
     }
     
     acc[traderName].receipts.push(receipt);
-    acc[traderName].totalValue += Number(receipt.value) || 0;
+    // Sum fees_paid only if nature_of_receipt is 'mf'
+    const isMarketFees = receipt.nature_of_receipt === 'mf';
+    console.log('Receipt:', receipt.id, 'isMarketFees:', isMarketFees, 'fees_paid:', receipt.fees_paid);
+    acc[traderName].totalValue += isMarketFees ? (Number(receipt.fees_paid) || 0) : 0;
     acc[traderName].totalQuantity += Number(receipt.quantity) || 0;
     
     const commoditiesSet = new Set(acc[traderName].commodities);
@@ -119,7 +121,8 @@ const TraderAnalytics = ({ user }: { user: any }) => {
         acc[month] = { month, count: 0, value: 0 };
       }
       acc[month].count += 1;
-      acc[month].value += Number(receipt.value) || 0;
+      const isMarketFees = receipt.nature_of_receipt === 'mf';
+      acc[month].value += isMarketFees ? (Number(receipt.fees_paid) || 0) : 0;
       return acc;
     }, {});
     
@@ -183,18 +186,29 @@ const TraderAnalytics = ({ user }: { user: any }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Top Traders by Value</CardTitle>
-            <CardDescription>Highest trading volume by value</CardDescription>
+            <CardTitle>Top Traders by Market Fees</CardTitle>
+            <CardDescription>Highest trading volume by market fees</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topTraders}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Total Value']} />
-                <Bar dataKey="totalValue" fill="#4caf50" />
-              </BarChart>
+              <PieChart>
+                <Pie
+                  data={topTraders}
+                  dataKey="totalValue"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  fill="#4caf50"
+                  label={(entry) => entry.name}
+                >
+                  {topTraders.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Total Market Fees']} />
+                <Legend />
+              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -225,7 +239,7 @@ const TraderAnalytics = ({ user }: { user: any }) => {
                     </div>
                     <div className="text-right">
                       <div className="font-bold">₹{(trader.totalValue / 100000).toFixed(1)}L</div>
-                      <div className="text-sm text-gray-600">Total Value</div>
+                      <div className="text-sm text-gray-600">Total Market Fees</div>
                     </div>
                   </div>
                 </div>
@@ -255,11 +269,11 @@ const TraderAnalytics = ({ user }: { user: any }) => {
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">₹{(selectedTraderData.totalValue / 100000).toFixed(1)}L</div>
-                  <div className="text-sm text-green-600">Total Value</div>
+                  <div className="text-sm text-green-600">Total Market Fees</div>
                 </div>
                 <div className="text-center p-4 bg-yellow-50 rounded-lg">
                   <div className="text-2xl font-bold text-yellow-600">₹{selectedTraderData.avgValue.toFixed(0)}</div>
-                  <div className="text-sm text-yellow-600">Avg per Receipt</div>
+                  <div className="text-sm text-yellow-600">Avg Market Fees per Receipt</div>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
                   <div className="text-2xl font-bold text-purple-600">{selectedTraderData.commodities.length}</div>
