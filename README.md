@@ -12,7 +12,7 @@ The **AMC Receipt Details Web Application** is a secure, centralized platform fo
 - **Receipt Management:** Add, edit, and view trade receipts with unique validation.
 - **Market Fee Tracking:** Market fees collected are the primary financial metric.
 - **Committee & District Dashboards:** Analytics and summaries for committees and the district.
-- **Advanced Reporting:** Generate and export reports (Excel/PDF/CSV) by committee, trader, commodity, and time period.
+- **Advanced Reporting:** Generate and export reports (Excel/PDF/CSV) by committee, trader, commodity, and time period
 - **Trader Analytics:** Analyze trader contributions and trends.
 - **User & Committee Management:** Admin features for managing users and committees.
 - **Responsive UI:** Works on desktop, tablet, and mobile devices.
