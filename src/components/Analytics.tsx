@@ -1,9 +1,75 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
-import { useReceiptData } from '@/hooks/useReceiptData';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -31,15 +97,69 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const Analytics = ({ user }: { user: any }) => {
-  const { userAccessibleReceipts, receiptsLoading, userCommitteeId } = useReceiptData(user);
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [totalReceiptsState, setTotalReceiptsState] = useState<number | null>(null);
+  const [activeMembers, setActiveMembers] = useState<number | null>(null);
+  const [totalValueState, setTotalValueState] = useState<number | null>(null);
+  const [totalFees, setTotalFees] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  if (receiptsLoading) {
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!user.amc_id) {
+        toast({
+          title: "Error",
+          description: "User AMC ID not found",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const year = new Date().getFullYear();
+        const month = new Date().getMonth() + 1;
+        const baseUrl = "/api/analytics";
+
+        const [receiptsRes, membersRes, valueRes, feesRes] = await Promise.all([
+          fetch(`${baseUrl}/totalReceipts?amcId=${user.amc_id}&year=${year}&month=${month}`),
+          fetch(`${baseUrl}/activeMembers?amcId=${user.amc_id}&year=${year}&month=${month}`),
+          fetch(`${baseUrl}/totalValue?amcId=${user.amc_id}&year=${year}&month=${month}`),
+          fetch(`${baseUrl}/totalFees?amcId=${user.amc_id}&year=${year}&month=${month}`),
+        ]);
+
+        if (!receiptsRes.ok || !membersRes.ok || !valueRes.ok || !feesRes.ok) {
+          throw new Error("Failed to fetch analytics data");
+        }
+
+        const receiptsData = await receiptsRes.json();
+        const membersData = await membersRes.json();
+        const valueData = await valueRes.json();
+        const feesData = await feesRes.json();
+
+        setTotalReceiptsState(receiptsData.count);
+        setActiveMembers(membersData.count);
+        setTotalValueState(valueData.sum);
+        setTotalFees(feesData.sum);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Unknown error",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [user, toast]);
+
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">Loading analytics data...</div>
@@ -47,56 +167,15 @@ const Analytics = ({ user }: { user: any }) => {
     );
   }
 
-  let receiptsData = userAccessibleReceipts;
+  let receiptsData = [];
 
-  if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    receiptsData = receiptsData.filter((receipt: any) => {
-      const receiptDate = new Date(receipt.date);
-      return receiptDate >= start && receiptDate <= end;
-    });
-  }
+  const districtChartData = [];
+  const commodityChartData = [];
+  const monthlyChartData = [];
 
-  const districtData = receiptsData.reduce((acc: any, receipt) => {
-    const district = receipt.committeeName || 'Unknown';
-    if (!acc[district]) {
-      acc[district] = { district, count: 0, value: 0 };
-    }
-    acc[district].count += 1;
-    acc[district].value += Number(receipt.value) || 0;
-    return acc;
-  }, {});
-
-  const districtChartData = Object.values(districtData);
-
-  const commodityData = receiptsData.reduce((acc: any, receipt) => {
-    const commodity = receipt.commodity || 'Unknown';
-    if (!acc[commodity]) {
-      acc[commodity] = { commodity, count: 0, value: 0 };
-    }
-    acc[commodity].count += 1;
-    acc[commodity].value += Number(receipt.value) || 0;
-    return acc;
-  }, {});
-
-  const commodityChartData = Object.values(commodityData).slice(0, 10);
-
-  const monthlyData = receiptsData.reduce((acc: any, receipt) => {
-    const month = new Date(receipt.date).toLocaleString('default', { month: 'short', year: 'numeric' });
-    if (!acc[month]) {
-      acc[month] = { month, count: 0, value: 0 };
-    }
-    acc[month].count += 1;
-    acc[month].value += Number(receipt.value) || 0;
-    return acc;
-  }, {});
-
-  const monthlyChartData = Object.values(monthlyData);
-
-  const totalReceipts = receiptsData.length;
-  const totalValue = receiptsData.reduce((sum, receipt) => sum + (Number(receipt.value) || 0), 0);
-  const totalQuantity = receiptsData.reduce((sum, receipt) => sum + (Number(receipt.quantity) || 0), 0);
+  const totalReceipts = totalReceiptsState ?? 0;
+  const totalValue = totalValueState ?? 0;
+  const totalQuantity = 0; // Needs API support
   const avgValue = totalReceipts > 0 ? totalValue / totalReceipts : 0;
 
   const COLORS = ['#4caf50', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
@@ -166,7 +245,6 @@ const Analytics = ({ user }: { user: any }) => {
           <CardContent className="p-4">
             <div className="text-sm text-green-800">
               <p><strong>Committee:</strong> {user.committee}</p>
-              <p><strong>Committee ID:</strong> {userCommitteeId ? userCommitteeId.slice(0, 8) + '...' : 'Not Found'}</p>
               <p><strong>Receipts Found:</strong> {totalReceipts}</p>
             </div>
           </CardContent>

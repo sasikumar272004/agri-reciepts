@@ -22,57 +22,32 @@ const Index = () => {
 
   const handleLogin = async (username: string, password: string) => {
     setLoading(true);
-    console.log('Demo login attempt for username:', username);
-    
-    // Updated demo user mapping with correct committee names from database
-    const demoUsers = {
-      'demo_deo': {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        email: 'demo_deo@amc.gov.in',
-        username: 'demo_deo',
-        name: 'Demo DEO User',
-        role: 'DEO',
-        committee: 'Tuni Agricultural Market Committee'
-      },
-      'demo_supervisor': {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        email: 'demo_supervisor@amc.gov.in',
-        username: 'demo_supervisor',
-        name: 'Demo Supervisor User',
-        role: 'Supervisor',
-        committee: 'Kakinada Agricultural Market Committee'
-      },
-      'demo_jd': {
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        email: 'demo_jd@amc.gov.in',
-        username: 'demo_jd',
-        name: 'Demo Joint Director',
-        role: 'JD',
-        committee: null
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
-    };
-
-    // Check if username exists in demo users
-    const user = demoUsers[username.toLowerCase()];
-    
-    if (user) {
-      console.log('Demo user found:', user);
-      setCurrentUser(user);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(user));
+      const data = await response.json();
+      setCurrentUser(data.user);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(data.user));
       toast({
         title: "Login Successful",
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${data.user.full_name || data.user.username}!`,
       });
-    } else {
-      console.log('Demo user not found for username:', username);
-      toast({ 
-        title: "Login Failed", 
-        description: "Invalid username. Please use demo_deo, demo_supervisor, or demo_jd", 
-        variant: "destructive" 
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || 'Invalid username or password',
+        variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleLogout = () => {
@@ -128,8 +103,11 @@ const Index = () => {
                 <p className="text-xs text-blue-600 mt-2">Use these usernames to login (password not required for demo).</p>
               </div>
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-center flex-col items-center gap-4">
               <LoginForm onLogin={handleLogin} loading={loading} />
+              <a href="/register" className="text-blue-600 hover:underline text-sm">
+                Don't have an account? Register here
+              </a>
             </div>
           </div>
         </div>
