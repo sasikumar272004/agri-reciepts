@@ -1,56 +1,39 @@
-// db/auth.js
-import { pool } from './pool.js';
 import bcrypt from 'bcrypt';
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
-/**
- * Fetches user + password hash, verifies with bcrypt.
- * Returns user info (without hash) or null.
- */
+dotenv.config();
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+
 export async function authenticateUser(username, plainPassword) {
-  const [rows] = await pool.query(
-    `SELECT u.user_id, u.username, u.full_name, u.role_id, u.amc_id, c.password_hash
-     FROM users u
-     JOIN user_credentials c ON c.user_id = u.user_id
-     WHERE u.username = ?`,
-    [username]
-  );
-  if (!rows.length) return null;
+  const [rows] = await pool.query('SELECT * FROM user_credentials WHERE username = ?', [username]);
 
-  const { password_hash, ...user } = rows[0];
-  const match = await bcrypt.compare(plainPassword, password_hash);
-  return match ? user : null;
+  if (rows.length === 0) return null;
+
+  const user = rows[0];
+  const isMatch = await bcrypt.compare(plainPassword, user.password_hash);
+
+  if (!isMatch) return null;
+
+  return user;
 }
 
-/**
- * Registers a new user with hashed password.
- * Returns the new user id.
- */
 export async function registerUser({ username, fullName, roleId, amcId, plainPassword }) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
+  const password_hash = await bcrypt.hash(plainPassword, 10);
 
-    const [userResult] = await conn.query(
-      `INSERT INTO users (username, full_name, role_id, amc_id, created_at)
-       VALUES (?, ?, ?, ?, NOW())`,
-      [username, fullName, roleId, amcId]
-    );
+  const [result] = await pool.query(
+    'INSERT INTO user_credentials (username, full_name, role_id, amc_id, password_hash) VALUES (?, ?, ?, ?, ?)',
+    [username, fullName, roleId, amcId, password_hash]
+  );
 
-    const userId = userResult.insertId;
-    const passwordHash = await bcrypt.hash(plainPassword, 10);
-
-    await conn.query(
-      `INSERT INTO user_credentials (user_id, password_hash)
-       VALUES (?, ?)`,
-      [userId, passwordHash]
-    );
-
-    await conn.commit();
-    return userId;
-  } catch (error) {
-    await conn.rollback();
-    throw error;
-  } finally {
-    conn.release();
-  }
+  return result.insertId;
 }
