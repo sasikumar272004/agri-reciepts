@@ -2,8 +2,8 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer } from 'recharts';
-import { useToast } from "@/hooks/use-toast";
-import { useReceiptData } from '@/hooks/useReceiptData';
+import { useToast } from "@/components/hooks/use-toast";
+import { useReceiptData } from '@/components/hooks/useReceiptData';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {

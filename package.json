@@ -82,5 +82,18 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1"
-  }
+  },
+  "description": "The **AMC Receipt Details Web Application** is a secure, centralized platform for digitizing and managing trade receipts for Agricultural Market Committees (AMCs) within a district. The application streamlines data entry, enables robust analytics, and focuses on tracking market fees collected. It supports multiple user roles—Data Entry Operators, Supervisors, and Joint Directors—each with tailored dashboards and permissions.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karthikkraj/agri-reciepts.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/karthikkraj/agri-reciepts/issues"
+  },
+  "homepage": "https://github.com/karthikkraj/agri-reciepts#readme"
 }

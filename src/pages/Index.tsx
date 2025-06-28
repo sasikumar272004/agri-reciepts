@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Building2, Search, FileText, Users, Shield } from "lucide-react";
 import Dashboard from "@/components/Dashboard";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/hooks/use-toast";
 import LoginForm from "@/components/LoginForm";
 
 const LOCAL_STORAGE_USER_KEY = 'currentUser';

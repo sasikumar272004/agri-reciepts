@@ -22,7 +22,7 @@ import Analytics from "./Analytics";
 import TraderAnalytics from "./TraderAnalytics";
 import UserManagement from "./UserManagement";
 import Reports from "./Reports";
-import { useReceiptData } from '@/hooks/useReceiptData';
+import { useReceiptData } from '@/components/hooks/useReceiptData';
 import { supabase } from '@/integrations/supabase/client';
 
 const INACTIVITY_TIMEOUT = 30000; // 30 seconds

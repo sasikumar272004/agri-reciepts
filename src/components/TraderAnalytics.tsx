@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer } from 'recharts';
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/hooks/use-toast";
 import { Search, TrendingUp, User, DollarSign, Package, Calendar } from 'lucide-react';
-import { useReceiptData } from '@/hooks/useReceiptData';
+import { useReceiptData } from '@/components/hooks/useReceiptData';
 
 // Updated Receipt interface to match actual data structure
 interface Receipt {
